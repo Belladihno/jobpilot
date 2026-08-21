@@ -38,12 +38,15 @@ describe('Auth (e2e)', () => {
   });
 
   beforeEach(async () => {
-    // clean tables
-    await dataSource.query('TRUNCATE sessions, users CASCADE');
+    if (dataSource) {
+      await dataSource.query('TRUNCATE sessions, users CASCADE');
+    }
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   function extractCookie(res: request.Response): string {
