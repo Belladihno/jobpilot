@@ -4,7 +4,9 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './../src/app.module';
+import { REDIS_CLIENT } from '../src/infrastructure/redis/redis.constants';
 import { RedisService } from '../src/infrastructure/redis/redis.service';
+import { RABBITMQ_CONNECTION } from '../src/infrastructure/messaging/messaging.constants';
 import { MessagingService } from '../src/infrastructure/messaging/messaging.service';
 
 describe('AppController (e2e)', () => {
@@ -18,6 +20,21 @@ describe('AppController (e2e)', () => {
       isHealthy: jest.fn().mockReturnValue(true),
       publish: jest.fn(),
     } as unknown as MessagingService;
+    const mockRedisClient = {
+      ping: jest.fn().mockResolvedValue('PONG'),
+      quit: jest.fn().mockResolvedValue(undefined),
+      on: jest.fn(),
+      status: 'ready',
+    };
+    const mockRabbitConn = {
+      createChannel: jest.fn().mockResolvedValue({
+        publish: jest.fn().mockReturnValue(true),
+        close: jest.fn().mockResolvedValue(undefined),
+        on: jest.fn(),
+      }),
+      close: jest.fn().mockResolvedValue(undefined),
+      on: jest.fn(),
+    };
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
@@ -25,6 +42,10 @@ describe('AppController (e2e)', () => {
       .useValue(mockRedis)
       .overrideProvider(MessagingService)
       .useValue(mockMessaging)
+      .overrideProvider(REDIS_CLIENT)
+      .useValue(mockRedisClient)
+      .overrideProvider(RABBITMQ_CONNECTION)
+      .useValue(mockRabbitConn)
       .compile();
 
     app = moduleFixture.createNestApplication();

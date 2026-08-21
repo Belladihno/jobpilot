@@ -5,7 +5,9 @@ import { App } from 'supertest/types';
 import { DataSource } from 'typeorm';
 import cookieParser from 'cookie-parser';
 import { AppModule } from '../src/app.module';
+import { REDIS_CLIENT } from '../src/infrastructure/redis/redis.constants';
 import { RedisService } from '../src/infrastructure/redis/redis.service';
+import { RABBITMQ_CONNECTION } from '../src/infrastructure/messaging/messaging.constants';
 import { MessagingService } from '../src/infrastructure/messaging/messaging.service';
 
 describe('Auth (e2e)', () => {
@@ -21,6 +23,21 @@ describe('Auth (e2e)', () => {
     onModuleInit: jest.fn(),
     onModuleDestroy: jest.fn(),
   } as unknown as MessagingService;
+  const mockRedisClient = {
+    ping: jest.fn().mockResolvedValue('PONG'),
+    quit: jest.fn().mockResolvedValue(undefined),
+    on: jest.fn(),
+    status: 'ready',
+  };
+  const mockRabbitConn = {
+    createChannel: jest.fn().mockResolvedValue({
+      publish: jest.fn().mockReturnValue(true),
+      close: jest.fn().mockResolvedValue(undefined),
+      on: jest.fn(),
+    }),
+    close: jest.fn().mockResolvedValue(undefined),
+    on: jest.fn(),
+  };
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -28,6 +45,10 @@ describe('Auth (e2e)', () => {
       .useValue(mockRedis)
       .overrideProvider(MessagingService)
       .useValue(mockMessaging)
+      .overrideProvider(REDIS_CLIENT)
+      .useValue(mockRedisClient)
+      .overrideProvider(RABBITMQ_CONNECTION)
+      .useValue(mockRabbitConn)
       .compile();
 
     app = moduleRef.createNestApplication();
