@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import * as express from 'express';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
+import { setupSwagger } from './infrastructure/swagger/swagger.config';
 import type { AppConfig } from './config/configuration';
 
 async function bootstrap() {
@@ -34,8 +35,11 @@ async function bootstrap() {
 
   app.useGlobalFilters(new GlobalExceptionFilter());
 
+  setupSwagger(app);
+
   await app.listen(port);
   const logger = new Logger('Bootstrap');
   logger.log(`Server running on port ${port}`);
+  logger.log(`Swagger docs available at ${appUrl}/api/docs`);
 }
 void bootstrap();

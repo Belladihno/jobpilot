@@ -24,6 +24,13 @@ import {
   CurrentSession,
   CurrentUser,
 } from '../../common/decorators/current-user.decorator';
+import {
+  ApiLoginDocs,
+  ApiLogoutAllDocs,
+  ApiLogoutDocs,
+  ApiMeDocs,
+  ApiRegisterDocs,
+} from './docs/auth.swagger';
 
 @Controller('auth')
 export class AuthController {
@@ -33,6 +40,7 @@ export class AuthController {
   ) {}
 
   @Public()
+  @ApiRegisterDocs()
   @Post('register')
   async register(
     @Body(new ZodValidationPipe(RegisterSchema)) dto: RegisterDto,
@@ -50,6 +58,7 @@ export class AuthController {
   }
 
   @Public()
+  @ApiLoginDocs()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
@@ -67,11 +76,13 @@ export class AuthController {
     return this.sanitizeUser(user);
   }
 
+  @ApiMeDocs()
   @Get('me')
   me(@CurrentUser() user: UserEntity) {
     return this.sanitizeUser(user);
   }
 
+  @ApiLogoutDocs()
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(
@@ -83,6 +94,7 @@ export class AuthController {
     return { message: 'Logged out' };
   }
 
+  @ApiLogoutAllDocs()
   @Post('logout-all')
   @HttpCode(HttpStatus.OK)
   async logoutAll(

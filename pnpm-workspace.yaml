@@ -2,5 +2,6 @@ packages:
   - '.'
 
 allowBuilds:
+  '@scarf/scarf': true
   argon2: true
   unrs-resolver: true
