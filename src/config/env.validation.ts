@@ -1,0 +1,33 @@
+import * as Joi from 'joi';
+
+export const envValidationSchema = Joi.object({
+  // Application
+  NODE_ENV: Joi.string()
+    .valid('development', 'test', 'production')
+    .default('development'),
+  APP_NAME: Joi.string().default('JobPilot'),
+  PORT: Joi.number().port().default(5500),
+  APP_URL: Joi.string().uri().default('http://localhost:5500'),
+
+  // PostgreSQL
+  DATABASE_URL: Joi.string().required(),
+
+  // Redis
+  REDIS_HOST: Joi.string().required(),
+  REDIS_PORT: Joi.number().default(6379),
+  REDIS_PASSWORD: Joi.string().allow('').optional(),
+
+  // RabbitMQ
+  RABBITMQ_HOST: Joi.string().required(),
+  RABBITMQ_PORT: Joi.number().default(5672),
+  RABBITMQ_USERNAME: Joi.string().required(),
+  RABBITMQ_PASSWORD: Joi.string().required(),
+  RABBITMQ_VHOST: Joi.string().default('/'),
+
+  // Authentication
+  SESSION_TTL_SECONDS: Joi.number().integer().positive().required(),
+  COOKIE_NAME: Joi.string().default('jobpilot_session'),
+  COOKIE_SECURE: Joi.boolean().default(false),
+  COOKIE_HTTP_ONLY: Joi.boolean().default(true),
+  COOKIE_SAME_SITE: Joi.string().valid('lax', 'strict', 'none').default('lax'),
+});
