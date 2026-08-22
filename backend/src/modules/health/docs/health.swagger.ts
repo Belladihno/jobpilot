@@ -23,7 +23,8 @@ export const ApiHealthDocs = () =>
   applyDecorators(
     ApiOperation({
       summary: 'Health check',
-      description: 'Postgres + Redis + RabbitMQ',
+      description:
+        'Postgres + Redis + RabbitMQ. Per-service detail is omitted in production.',
     }),
     ApiOkResponse({ description: 'All services up', type: HealthResponseDto }),
     ApiServiceUnavailableResponse({ description: 'One or more services down' }),

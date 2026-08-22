@@ -19,6 +19,7 @@ async function bootstrap() {
   const config = app.get(ConfigService<AppConfig, true>);
   const appUrl = config.get('app.url', { infer: true });
   const port = config.get('app.port', { infer: true });
+  const env = config.get('app.env', { infer: true });
 
   app.enableCors({
     origin: appUrl,
@@ -35,11 +36,15 @@ async function bootstrap() {
 
   app.useGlobalFilters(new GlobalExceptionFilter());
 
-  setupSwagger(app);
+  if (env !== 'production') {
+    setupSwagger(app);
+  }
 
   await app.listen(port);
   const logger = new Logger('Bootstrap');
   logger.log(`Server running on port ${port}`);
-  logger.log(`Swagger docs available at ${appUrl}/api/docs`);
+  if (env !== 'production') {
+    logger.log(`Swagger docs available at ${appUrl}/api/docs`);
+  }
 }
 void bootstrap();

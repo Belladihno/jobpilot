@@ -1,6 +1,7 @@
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
+import { QueryFailedError } from 'typeorm';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { SessionRepository } from './repositories/session.repository';
@@ -92,6 +93,29 @@ describe('AuthService', () => {
         ),
       ).rejects.toThrow(ConflictException);
     });
+
+    it('maps unique violation on insert to conflict when race passes pre-check', async () => {
+      usersService.existsByEmail.mockResolvedValue(false);
+      passwordService.hash.mockResolvedValue('hashed-pass');
+      const dupError = new QueryFailedError(
+        'insert into users...',
+        [],
+        Object.assign(new Error('duplicate key'), { code: '23505' }),
+      );
+      usersService.create.mockRejectedValue(dupError);
+
+      await expect(
+        authService.register(
+          {
+            email: 'race@example.com',
+            password: 'pass12345',
+            firstName: 'R',
+            lastName: 'C',
+          },
+          { ip: '', userAgent: '' },
+        ),
+      ).rejects.toThrow(ConflictException);
+    });
   });
 
   describe('login', () => {
@@ -110,12 +134,31 @@ describe('AuthService', () => {
 
     it('fails with generic error if user not found', async () => {
       usersService.findByEmail.mockResolvedValue(null);
+      passwordService.hash.mockResolvedValue('dummy-hash');
       await expect(
         authService.login(
           { email: 'missing@example.com', password: 'x' },
           { ip: '', userAgent: '' },
         ),
       ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('runs dummy hash verify on unknown email to equalize timing', async () => {
+      usersService.findByEmail.mockResolvedValue(null);
+      passwordService.hash.mockResolvedValue('dummy-hash');
+      passwordService.verify.mockResolvedValue(false);
+
+      await expect(
+        authService.login(
+          { email: 'unknown@example.com', password: 'guess' },
+          { ip: '', userAgent: '' },
+        ),
+      ).rejects.toThrow(UnauthorizedException);
+
+      expect(passwordService.verify).toHaveBeenCalledWith(
+        'dummy-hash',
+        'guess',
+      );
     });
 
     it('fails with generic error if password wrong', async () => {

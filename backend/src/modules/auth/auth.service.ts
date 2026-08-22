@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
+import { QueryFailedError } from 'typeorm';
 import { AppConfig } from '../../config/configuration';
 import { UsersService } from '../users/users.service';
 import { UserStatus } from '../users/entities/user.entity';
@@ -16,6 +17,8 @@ import { SessionEntity } from './entities/session.entity';
 
 @Injectable()
 export class AuthService {
+  private dummyHashPromise?: Promise<string>;
+
   constructor(
     private readonly usersService: UsersService,
     private readonly sessionRepository: SessionRepository,
@@ -31,12 +34,20 @@ export class AuthService {
 
     const passwordHash = await this.passwordService.hash(dto.password);
 
-    const user = await this.usersService.create({
-      email: dto.email,
-      passwordHash,
-      firstName: dto.firstName,
-      lastName: dto.lastName,
-    });
+    let user;
+    try {
+      user = await this.usersService.create({
+        email: dto.email,
+        passwordHash,
+        firstName: dto.firstName,
+        lastName: dto.lastName,
+      });
+    } catch (err) {
+      if (this.isUniqueViolation(err)) {
+        throw new ConflictException('Email already registered');
+      }
+      throw err;
+    }
 
     const { token, session } = await this.createSession(user.id, meta);
 
@@ -47,6 +58,7 @@ export class AuthService {
     const user = await this.usersService.findByEmail(dto.email);
 
     if (!user) {
+      await this.verifyDummyHash(dto.password);
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -90,6 +102,25 @@ export class AuthService {
     await this.sessionRepository.updateLastUsed(session.id);
 
     return session;
+  }
+
+  private isUniqueViolation(err: unknown): boolean {
+    if (!(err instanceof QueryFailedError)) {
+      return false;
+    }
+    const withCode = err as unknown as {
+      code?: string;
+      driverError?: { code?: string };
+    };
+    return withCode.code === '23505' || withCode.driverError?.code === '23505';
+  }
+
+  private async verifyDummyHash(password: string): Promise<void> {
+    this.dummyHashPromise ??= this.passwordService.hash(
+      'timing-equalizer-not-a-real-password',
+    );
+    const dummyHash = await this.dummyHashPromise;
+    await this.passwordService.verify(dummyHash, password);
   }
 
   private async createSession(
