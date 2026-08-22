@@ -8,6 +8,7 @@ import { REDIS_CLIENT } from '../src/infrastructure/redis/redis.constants';
 import { RedisService } from '../src/infrastructure/redis/redis.service';
 import { RABBITMQ_CONNECTION } from '../src/infrastructure/messaging/messaging.constants';
 import { MessagingService } from '../src/infrastructure/messaging/messaging.service';
+import { makeMockRedisClient } from './helpers/mock-redis-client';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
@@ -20,12 +21,7 @@ describe('AppController (e2e)', () => {
       isHealthy: jest.fn().mockReturnValue(true),
       publish: jest.fn(),
     } as unknown as MessagingService;
-    const mockRedisClient = {
-      ping: jest.fn().mockResolvedValue('PONG'),
-      quit: jest.fn().mockResolvedValue(undefined),
-      on: jest.fn(),
-      status: 'ready',
-    };
+    const mockRedisClient = makeMockRedisClient();
     const mockRabbitConn = {
       createChannel: jest.fn().mockResolvedValue({
         publish: jest.fn().mockReturnValue(true),

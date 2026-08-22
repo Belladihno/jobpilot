@@ -8,11 +8,16 @@ import { MessagingModule } from './infrastructure/messaging/messaging.module';
 import { HealthModule } from './modules/health/health.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import {
+  ThrottlerModule,
+  ThrottlerGuard,
+  ThrottlerStorage,
+} from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { AuthenticationGuard } from './modules/auth/guards/authentication.guard';
 import { ZodEnforcementInterceptor } from './common/interceptors/zod-enforcement.interceptor';
+import { RedisThrottlerStorage } from './infrastructure/redis/throttler-redis.storage';
 
 @Module({
   imports: [
@@ -44,6 +49,10 @@ import { ZodEnforcementInterceptor } from './common/interceptors/zod-enforcement
     ]),
   ],
   providers: [
+    {
+      provide: ThrottlerStorage,
+      useClass: RedisThrottlerStorage,
+    },
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
