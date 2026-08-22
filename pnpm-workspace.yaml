@@ -1,7 +1,7 @@
 packages:
-  - '.'
+  - 'backend'
 
 allowBuilds:
-  '@scarf/scarf': true
+  '@scarf/scarf': set this to true or false
   argon2: true
   unrs-resolver: true

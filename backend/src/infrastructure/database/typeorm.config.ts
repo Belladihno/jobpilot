@@ -13,7 +13,7 @@ export class TypeOrmConfig implements TypeOrmOptionsFactory {
       url: this.config.get('database.url', { infer: true }),
       autoLoadEntities: true,
       synchronize: false,
-      migrations: [__dirname + '/../../../database/migrations/*{.ts,.js}'],
+      migrations: [__dirname + '/../../../migrations/*{.ts,.js}'],
       migrationsRun: false,
       logging: this.config.get('app.env', { infer: true }) === 'development',
       ssl: false,
