@@ -15,6 +15,8 @@ import { RegisterDto } from './schemas/register.schema';
 import { LoginDto } from './schemas/login.schema';
 import { SessionEntity } from './entities/session.entity';
 
+const LAST_USED_UPDATE_INTERVAL_MS = 60_000;
+
 @Injectable()
 export class AuthService {
   private dummyHashPromise?: Promise<string>;
@@ -99,7 +101,10 @@ export class AuthService {
     if (session.revokedAt) return null;
     if (session.expiresAt < new Date()) return null;
 
-    await this.sessionRepository.updateLastUsed(session.id);
+    const lastUsed = session.lastUsedAt?.getTime() ?? 0;
+    if (Date.now() - lastUsed > LAST_USED_UPDATE_INTERVAL_MS) {
+      await this.sessionRepository.updateLastUsed(session.id);
+    }
 
     return session;
   }

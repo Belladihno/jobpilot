@@ -219,6 +219,21 @@ describe('AuthService', () => {
       expect(sessionRepo.updateLastUsed).toHaveBeenCalledWith('s1');
     });
 
+    it('skips lastUsed write when updated recently', async () => {
+      const token = 'tok-fresh';
+      const hash = crypto.createHash('sha256').update(token).digest('hex');
+      sessionRepo.findByTokenHash.mockResolvedValue({
+        id: 's2',
+        tokenHash: hash,
+        revokedAt: null,
+        expiresAt: new Date(Date.now() + 10000),
+        lastUsedAt: new Date(),
+      } as never);
+
+      await authService.validateSession(token);
+      expect(sessionRepo.updateLastUsed).not.toHaveBeenCalledWith('s2');
+    });
+
     it('returns null if revoked', async () => {
       const token = 'tok2';
       sessionRepo.findByTokenHash.mockResolvedValue({
