@@ -15,7 +15,7 @@ import {
 } from '@nestjs/throttler';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
-import { AuthenticationGuard } from './modules/auth/guards/authentication.guard';
+import { AuthenticationGuard } from './common/guards/authentication.guard';
 import { ZodEnforcementInterceptor } from './common/interceptors/zod-enforcement.interceptor';
 import { RedisThrottlerStorage } from './infrastructure/redis/throttler-redis.storage';
 

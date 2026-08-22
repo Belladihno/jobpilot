@@ -5,7 +5,7 @@ import { AuthService } from './auth.service';
 import { PasswordService } from './password.service';
 import { SessionRepository } from './repositories/session.repository';
 import { SessionEntity } from './entities/session.entity';
-import { AuthenticationGuard } from './guards/authentication.guard';
+import { AuthenticationGuard } from '../../common/guards/authentication.guard';
 import { UsersModule } from '../users/users.module';
 
 @Module({
