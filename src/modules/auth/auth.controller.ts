@@ -1,5 +1,4 @@
 import {
-  Body,
   Controller,
   Get,
   HttpCode,
@@ -13,7 +12,7 @@ import { ConfigService } from '@nestjs/config';
 import type { AppConfig } from '../../config/configuration';
 import { AuthService } from './auth.service';
 import { Public } from '../../common/decorators/public.decorator';
-import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
+import { ZodBody } from '../../common/decorators/zod-body.decorator';
 import { RegisterSchema } from './schemas/register.schema';
 import type { RegisterDto } from './schemas/register.schema';
 import { LoginSchema } from './schemas/login.schema';
@@ -43,7 +42,7 @@ export class AuthController {
   @ApiRegisterDocs()
   @Post('register')
   async register(
-    @Body(new ZodValidationPipe(RegisterSchema)) dto: RegisterDto,
+    @ZodBody(RegisterSchema) dto: RegisterDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
@@ -62,7 +61,7 @@ export class AuthController {
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(
-    @Body(new ZodValidationPipe(LoginSchema)) dto: LoginDto,
+    @ZodBody(LoginSchema) dto: LoginDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {

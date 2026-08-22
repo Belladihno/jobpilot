@@ -9,9 +9,10 @@ import { HealthModule } from './modules/health/health.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { AuthenticationGuard } from './modules/auth/guards/authentication.guard';
+import { ZodEnforcementInterceptor } from './common/interceptors/zod-enforcement.interceptor';
 
 @Module({
   imports: [
@@ -50,6 +51,10 @@ import { AuthenticationGuard } from './modules/auth/guards/authentication.guard'
     {
       provide: APP_GUARD,
       useClass: AuthenticationGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: ZodEnforcementInterceptor,
     },
   ],
 })
