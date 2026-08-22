@@ -33,4 +33,28 @@ export class SessionRepository {
   async updateLastUsed(id: string): Promise<void> {
     await this.repo.update(id, { lastUsedAt: new Date() });
   }
+
+  async purgeStale(
+    expiredGracePeriodDays: number,
+    revokedRetentionDays: number,
+  ): Promise<number> {
+    const expiredBefore = new Date(
+      Date.now() - expiredGracePeriodDays * 24 * 60 * 60 * 1000,
+    );
+    const revokedBefore = new Date(
+      Date.now() - revokedRetentionDays * 24 * 60 * 60 * 1000,
+    );
+
+    const result = await this.repo
+      .createQueryBuilder()
+      .delete()
+      .from(SessionEntity)
+      .where('expires_at < :expiredBefore', { expiredBefore })
+      .orWhere('revoked_at IS NOT NULL AND revoked_at < :revokedBefore', {
+        revokedBefore,
+      })
+      .execute();
+
+    return result.affected ?? 0;
+  }
 }

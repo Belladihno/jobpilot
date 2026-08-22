@@ -1,7 +1,9 @@
-import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { UserEntity } from '../../users/entities/user.entity';
 
+@Index('IDX_sessions_token_hash', ['tokenHash'], { unique: true })
+@Index('IDX_sessions_user_id', ['userId'])
 @Entity('sessions')
 export class SessionEntity extends BaseEntity {
   @Column({ type: 'uuid' })

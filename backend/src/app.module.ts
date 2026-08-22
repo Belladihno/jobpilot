@@ -13,6 +13,7 @@ import {
   ThrottlerGuard,
   ThrottlerStorage,
 } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { AuthenticationGuard } from './common/guards/authentication.guard';
@@ -32,6 +33,7 @@ import { RedisThrottlerStorage } from './infrastructure/redis/throttler-redis.st
     DatabaseModule,
     RedisModule,
     MessagingModule,
+    ScheduleModule.forRoot(),
     HealthModule,
     UsersModule,
     AuthModule,
