@@ -16,6 +16,11 @@ export const envValidationSchema = Joi.object({
   STORAGE_DRIVER: Joi.string().valid('local').default('local'),
   STORAGE_LOCAL_ROOT: Joi.string().default('./storage'),
 
+  // AI
+  AI_PROVIDER: Joi.string().valid('stub', 'anthropic').default('stub'),
+  AI_ANTHROPIC_API_KEY: Joi.string().allow('').optional(),
+  AI_ANTHROPIC_MODEL: Joi.string().default('claude-3-5-sonnet-latest'),
+
   // Redis
   REDIS_HOST: Joi.string().required(),
   REDIS_PORT: Joi.number().default(6379),

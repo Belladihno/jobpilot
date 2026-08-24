@@ -8,7 +8,15 @@ import type { Channel, ChannelModel, ConsumeMessage } from 'amqplib';
 import { RABBITMQ_CONNECTION } from '../../infrastructure/messaging/messaging.constants';
 import { QUEUE_RESUME_PROCESSING } from '../../infrastructure/messaging/topology';
 import { StorageProvider } from '../../infrastructure/storage/storage.provider';
+import { AI_COMPLETION_CLIENT } from '../../infrastructure/ai/ai-client.interface';
+import type { AiCompletionClient } from '../../infrastructure/ai/ai-client.interface';
 import { ResumeRepository } from '../../modules/resumes/repositories/resume.repository';
+import { StructuredResumeRepository } from '../../modules/resumes/repositories/structured-resume.repository';
+import {
+  buildExtractionPrompt,
+  parseModelJson,
+  StructuredResumeSchema,
+} from '../../modules/resumes/schemas/structured-resume.schema';
 import { ResumeProcessingMessageSchema } from '../../modules/resumes/schemas/resume-message.schema';
 import { ResumeParserRegistry } from './resume-parser.registry';
 import { ResumeStatus } from '../../modules/resumes/entities/resume.entity';
@@ -23,11 +31,15 @@ export class ResumeProcessingConsumer implements OnApplicationBootstrap {
     private readonly resumeRepository: ResumeRepository,
     private readonly parserRegistry: ResumeParserRegistry,
     private readonly storageProvider: StorageProvider,
+    @Inject(AI_COMPLETION_CLIENT)
+    private readonly aiClient: AiCompletionClient,
+    private readonly structuredResumeRepository: StructuredResumeRepository,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
     await this.start();
   }
+
   async start(): Promise<void> {
     this.channel = await this.connection.createChannel();
     await this.channel.prefetch(1);
@@ -69,9 +81,14 @@ export class ResumeProcessingConsumer implements OnApplicationBootstrap {
       }
 
       resume.extractedText = await parser.extract(file);
+      await this.resumeRepository.save(resume);
 
-      // Batch D inserts the AI structuring stage between extraction
-      // and the processed status.
+      const structured = await this.extractStructuredData(resume.extractedText);
+      await this.structuredResumeRepository.replaceAllForResume(
+        resume.id,
+        structured,
+      );
+
       resume.status = ResumeStatus.PROCESSED;
       resume.processingError = null;
       await this.resumeRepository.save(resume);
@@ -84,6 +101,26 @@ export class ResumeProcessingConsumer implements OnApplicationBootstrap {
     }
 
     this.channel.ack(message);
+  }
+
+  /** AI extraction with a hard Zod gate — invalid output never persists. */
+  private async extractStructuredData(resumeText: string) {
+    const { systemPrompt, userPrompt } = buildExtractionPrompt(resumeText);
+    const raw = await this.aiClient.complete(systemPrompt, userPrompt);
+
+    const json = parseModelJson(raw);
+    if (json === null) {
+      throw new Error('ai_validation_failed: model returned non-JSON output');
+    }
+
+    const result = StructuredResumeSchema.safeParse(json);
+    if (!result.success) {
+      const firstIssue = result.error.issues[0];
+      throw new Error(
+        `ai_validation_failed: ${firstIssue.path.join('.')} ${firstIssue.message}`,
+      );
+    }
+    return result.data;
   }
 
   private parseJson(message: ConsumeMessage): unknown {

@@ -9,9 +9,11 @@ import { ResumeParserRegistry } from '../../workers/resume-processing/resume-par
 import { PdfResumeParser } from '../../workers/resume-processing/parsers/pdf.parser';
 import { DocxResumeParser } from '../../workers/resume-processing/parsers/docx.parser';
 import { StorageModule } from '../../infrastructure/storage/storage.module';
+import { AiModule } from '../../infrastructure/ai/ai.module';
+import { StructuredResumeRepository } from './repositories/structured-resume.repository';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ResumeEntity]), StorageModule],
+  imports: [TypeOrmModule.forFeature([ResumeEntity]), StorageModule, AiModule],
   controllers: [ResumesController],
   providers: [
     ResumeRepository,
@@ -19,6 +21,7 @@ import { StorageModule } from '../../infrastructure/storage/storage.module';
     ResumeParserRegistry,
     PdfResumeParser,
     DocxResumeParser,
+    StructuredResumeRepository,
     ResumeProcessingConsumer,
   ],
   exports: [ResumesService],

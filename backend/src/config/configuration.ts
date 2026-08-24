@@ -12,6 +12,12 @@ export const configuration = () => ({
     driver: process.env.STORAGE_DRIVER ?? 'local',
     localRoot: process.env.STORAGE_LOCAL_ROOT ?? './storage',
   },
+  ai: {
+    provider: process.env.AI_PROVIDER ?? 'stub',
+    anthropicApiKey: process.env.AI_ANTHROPIC_API_KEY || undefined,
+    anthropicModel:
+      process.env.AI_ANTHROPIC_MODEL ?? 'claude-3-5-sonnet-latest',
+  },
   redis: {
     host: process.env.REDIS_HOST!,
     port: parseInt(process.env.REDIS_PORT!, 10),

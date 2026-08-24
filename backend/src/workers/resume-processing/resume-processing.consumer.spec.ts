@@ -2,8 +2,9 @@ import type { ConsumeMessage } from 'amqplib';
 import { ResumeProcessingConsumer } from './resume-processing.consumer';
 import { ResumeParserRegistry } from './resume-parser.registry';
 import type { ResumeParser } from './parsers/resume-parser.interface';
-import type { StorageProvider } from '../../infrastructure/storage/storage.provider';
+import { StorageProvider } from '../../infrastructure/storage/storage.provider';
 import { ResumeRepository } from '../../modules/resumes/repositories/resume.repository';
+import { StructuredResumeRepository } from '../../modules/resumes/repositories/structured-resume.repository';
 import { ResumeStatus } from '../../modules/resumes/entities/resume.entity';
 
 function message(payload: unknown): ConsumeMessage {
@@ -26,10 +27,14 @@ describe('ResumeProcessingConsumer', () => {
   };
   let storage: { get: jest.Mock };
   let registry: { find: jest.Mock };
+  let aiClient: { complete: jest.Mock };
+  let structuredRepo: { replaceAllForResume: jest.Mock };
   let consumer: ResumeProcessingConsumer;
 
+  const RESUME_ID = '11111111-1111-7111-8111-111111111111';
+
   const baseResume = () => ({
-    id: '11111111-1111-7111-8111-111111111111',
+    id: RESUME_ID,
     userId: 'u-1',
     mimeType: 'application/pdf',
     storageKey: 'resumes/u-1/x.pdf',
@@ -38,7 +43,7 @@ describe('ResumeProcessingConsumer', () => {
     processingError: null,
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     channel = {
       ack: jest.fn(),
       prefetch: jest.fn().mockResolvedValue(undefined),
@@ -54,6 +59,20 @@ describe('ResumeProcessingConsumer', () => {
         extract: jest.fn().mockResolvedValue('extracted text'),
       } as unknown as ResumeParser),
     };
+    aiClient = {
+      complete: jest.fn().mockResolvedValue(
+        JSON.stringify({
+          skills: [{ name: 'Node.js' }],
+          experience: [],
+          education: [],
+          certifications: [],
+          projects: [],
+        }),
+      ),
+    };
+    structuredRepo = {
+      replaceAllForResume: jest.fn().mockResolvedValue(undefined),
+    };
 
     const connection = {
       createChannel: jest.fn().mockResolvedValue(channel),
@@ -63,18 +82,53 @@ describe('ResumeProcessingConsumer', () => {
       resumeRepo as unknown as ResumeRepository,
       registry as unknown as ResumeParserRegistry,
       storage as unknown as StorageProvider,
+      aiClient,
+      structuredRepo as unknown as StructuredResumeRepository,
     );
-    return consumer.start();
+    await consumer.start();
   });
 
-  it('extracts text and marks processed', async () => {
+  it('extracts text, structures via ai, persists and marks processed', async () => {
     const resume = baseResume();
     resumeRepo.findById.mockResolvedValue(resume);
 
-    await consumer.handle(message({ resumeId: resume.id }));
+    await consumer.handle(message({ resumeId: RESUME_ID }));
 
     expect(resume.extractedText).toBe('extracted text');
+    expect(aiClient.complete).toHaveBeenCalledTimes(1);
+    expect(structuredRepo.replaceAllForResume).toHaveBeenCalledWith(RESUME_ID, {
+      skills: [{ name: 'Node.js' }],
+      experience: [],
+      education: [],
+      certifications: [],
+      projects: [],
+    });
     expect(resume.status).toBe(ResumeStatus.PROCESSED);
+    expect(channel.ack).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks failed when ai output fails zod validation', async () => {
+    const resume = baseResume();
+    resumeRepo.findById.mockResolvedValue(resume);
+    aiClient.complete.mockResolvedValue('{"skills":"not-an-array"}');
+
+    await consumer.handle(message({ resumeId: RESUME_ID }));
+
+    expect(resume.status).toBe(ResumeStatus.FAILED);
+    expect(resume.processingError).toContain('ai_validation_failed');
+    expect(structuredRepo.replaceAllForResume).not.toHaveBeenCalled();
+    expect(channel.ack).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks failed when model returns non-json', async () => {
+    const resume = baseResume();
+    resumeRepo.findById.mockResolvedValue(resume);
+    aiClient.complete.mockResolvedValue('sorry, I cannot help with that');
+
+    await consumer.handle(message({ resumeId: RESUME_ID }));
+
+    expect(resume.status).toBe(ResumeStatus.FAILED);
+    expect(resume.processingError).toContain('non-JSON');
     expect(channel.ack).toHaveBeenCalledTimes(1);
   });
 
@@ -88,9 +142,7 @@ describe('ResumeProcessingConsumer', () => {
   it('acks and discards when resume no longer exists', async () => {
     resumeRepo.findById.mockResolvedValue(null);
 
-    await consumer.handle(
-      message({ resumeId: '22222222-2222-7222-8222-222222222222' }),
-    );
+    await consumer.handle(message({ resumeId: RESUME_ID }));
 
     expect(resumeRepo.save).not.toHaveBeenCalled();
     expect(channel.ack).toHaveBeenCalledTimes(1);
@@ -103,10 +155,11 @@ describe('ResumeProcessingConsumer', () => {
       extract: jest.fn().mockRejectedValue(new Error('corrupt pdf')),
     } as unknown as ResumeParser);
 
-    await consumer.handle(message({ resumeId: resume.id }));
+    await consumer.handle(message({ resumeId: RESUME_ID }));
 
     expect(resume.status).toBe(ResumeStatus.FAILED);
     expect(resume.processingError).toBe('corrupt pdf');
+    expect(aiClient.complete).not.toHaveBeenCalled();
     expect(channel.ack).toHaveBeenCalledTimes(1);
   });
 });

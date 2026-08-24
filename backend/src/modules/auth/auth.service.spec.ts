@@ -30,7 +30,6 @@ describe('AuthService', () => {
   beforeEach(() => {
     usersService = {
       existsByEmail: jest.fn(),
-      create: jest.fn(),
       findByEmail: jest.fn(),
     } as unknown as jest.Mocked<UsersService>;
 
@@ -204,7 +203,7 @@ describe('AuthService', () => {
       usersService.findByEmail.mockResolvedValue({
         ...mockUser,
         status: UserStatus.SUSPENDED,
-      } as unknown as import('../users/entities/user.entity').UserEntity);
+      } as unknown as UserEntity);
       passwordService.verify.mockResolvedValue(true);
       await expect(
         authService.login(
@@ -218,7 +217,7 @@ describe('AuthService', () => {
       usersService.findByEmail.mockResolvedValue({
         ...mockUser,
         status: UserStatus.PENDING_VERIFICATION,
-      } as unknown as import('../users/entities/user.entity').UserEntity);
+      } as unknown as UserEntity);
       passwordService.verify.mockResolvedValue(true);
       sessionRepo.create.mockResolvedValue({ id: 'sess-1' } as never);
 
