@@ -41,4 +41,7 @@ export class CandidateProfileEntity extends BaseEntity {
     nullable: true,
   })
   portfolioUrl!: string | null;
+
+  @Column({ name: 'default_resume_id', type: 'uuid', nullable: true })
+  defaultResumeId!: string | null;
 }

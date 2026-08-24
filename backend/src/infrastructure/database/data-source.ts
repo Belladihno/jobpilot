@@ -16,6 +16,8 @@ import { AddSessionsIndexes1787222400000 } from '../../../migrations/17872224000
 import { CreateCandidateProfiles1787308800000 } from '../../../migrations/1787308800000-CreateCandidateProfiles';
 import { CreateResumes1787395200000 } from '../../../migrations/1787395200000-CreateResumes';
 import { CreateStructuredResumeTables1787481600000 } from '../../../migrations/1787481600000-CreateStructuredResumeTables';
+import { AddResumesApprovedAt1787568000000 } from '../../../migrations/1787568000000-AddResumesApprovedAt';
+import { AddDefaultResumeToCandidateProfiles1787654400000 } from '../../../migrations/1787654400000-AddDefaultResumeToCandidateProfiles';
 
 dotenv.config();
 
@@ -41,6 +43,8 @@ export const AppDataSource = new DataSource({
     CreateCandidateProfiles1787308800000,
     CreateResumes1787395200000,
     CreateStructuredResumeTables1787481600000,
+    AddResumesApprovedAt1787568000000,
+    AddDefaultResumeToCandidateProfiles1787654400000,
   ],
   synchronize: false,
   ssl: false,

@@ -16,6 +16,66 @@ export class StructuredResumeRepository {
     resumeId: string,
     data: StructuredResume,
   ): Promise<void> {
+    await this.persist(resumeId, data);
+  }
+
+  /** Reads all structured rows and assembles the review shape. */
+  async findByResumeId(resumeId: string): Promise<StructuredResume> {
+    const [skills, experience, education, projects, certifications] =
+      await Promise.all([
+        this.repo(ResumeSkillEntity).find({ where: { resumeId } }),
+        this.repo(ResumeExperienceEntity).find({
+          where: { resumeId },
+          order: { createdAt: 'ASC' },
+        }),
+        this.repo(ResumeEducationEntity).find({
+          where: { resumeId },
+          order: { createdAt: 'ASC' },
+        }),
+        this.repo(ResumeProjectEntity).find({ where: { resumeId } }),
+        this.repo(ResumeCertificationEntity).find({ where: { resumeId } }),
+      ]);
+
+    return {
+      skills: skills.map((s) => ({
+        name: s.name,
+        level: s.level ?? undefined,
+      })),
+      experience: experience.map((e) => ({
+        company: e.company,
+        title: e.title,
+        startDate: e.startDate ?? undefined,
+        endDate: e.endDate,
+        bullets: e.achievements ?? [],
+      })),
+      education: education.map((e) => ({
+        institution: e.institution,
+        degree: e.degree,
+        field: e.field,
+        startYear: e.startYear ?? undefined,
+        endYear: e.endYear,
+      })),
+      certifications: certifications.map((c) => ({
+        name: c.name,
+        issuer: c.issuer,
+        issuedAt: c.issuedAt,
+      })),
+      projects: projects.map((p) => ({
+        name: p.name,
+        description: p.description,
+        technologies: p.technologies ?? [],
+      })),
+    };
+  }
+
+  private repo<T extends object>(entityClass: new () => T) {
+    return this.dataSource.getRepository(entityClass);
+  }
+
+  private async persist(
+    resumeId: string,
+    data: StructuredResume,
+  ): Promise<void> {
     await this.dataSource.transaction(async (manager) => {
       const skillRepo = manager.getRepository(ResumeSkillEntity);
       const experienceRepo = manager.getRepository(ResumeExperienceEntity);

@@ -2,7 +2,7 @@ import type { ConsumeMessage } from 'amqplib';
 import { ResumeProcessingConsumer } from './resume-processing.consumer';
 import { ResumeParserRegistry } from './resume-parser.registry';
 import type { ResumeParser } from './parsers/resume-parser.interface';
-import { StorageProvider } from '../../infrastructure/storage/storage.provider';
+import type { StorageProvider } from '../../infrastructure/storage/storage.provider';
 import { ResumeRepository } from '../../modules/resumes/repositories/resume.repository';
 import { StructuredResumeRepository } from '../../modules/resumes/repositories/structured-resume.repository';
 import { ResumeStatus } from '../../modules/resumes/entities/resume.entity';

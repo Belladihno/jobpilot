@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { CandidateProfileEntity } from './entities/candidate-profile.entity';
 import { CandidateProfileRepository } from './repositories/candidate-profile.repository';
+import { ResumesService } from '../resumes/resumes.service';
+import type { SetDefaultResumeDto } from './schemas/set-default-resume.schema';
 import type { UpdateCandidateProfileDto } from './schemas/update-profile.schema';
 
 const nullIfEmpty = (value: string): string | null =>
@@ -8,7 +10,10 @@ const nullIfEmpty = (value: string): string | null =>
 
 @Injectable()
 export class CandidateService {
-  constructor(private readonly profileRepository: CandidateProfileRepository) {}
+  constructor(
+    private readonly profileRepository: CandidateProfileRepository,
+    private readonly resumesService: ResumesService,
+  ) {}
 
   async getProfileByUserId(userId: string): Promise<CandidateProfileEntity> {
     const profile = await this.profileRepository.findByUserId(userId);
@@ -45,6 +50,23 @@ export class CandidateService {
     }
     if (dto.portfolioUrl !== undefined) {
       profile.portfolioUrl = nullIfEmpty(dto.portfolioUrl);
+    }
+
+    return this.profileRepository.save(profile);
+  }
+
+  async setDefaultResume(
+    userId: string,
+    dto: SetDefaultResumeDto,
+  ): Promise<CandidateProfileEntity> {
+    const profile = await this.getProfileByUserId(userId);
+
+    if (dto.resumeId === null) {
+      profile.defaultResumeId = null;
+    } else {
+      // Ownership + existence check; throws 404 when not the user's resume
+      await this.resumesService.getOwned(userId, dto.resumeId);
+      profile.defaultResumeId = dto.resumeId;
     }
 
     return this.profileRepository.save(profile);

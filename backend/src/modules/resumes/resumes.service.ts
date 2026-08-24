@@ -1,18 +1,22 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { uuidv7 } from 'uuidv7';
-import { StorageProvider } from '../../infrastructure/storage/storage.provider';
 import { MessagingService } from '../../infrastructure/messaging/messaging.service';
 import {
   EXCHANGE_JOBPILOT_EVENTS,
   ROUTING_KEY_RESUME_PROCESSING_REQUESTED,
 } from '../../infrastructure/messaging/topology';
+import { STORAGE_PROVIDER } from '../../infrastructure/storage/storage.provider';
+import type { StorageProvider } from '../../infrastructure/storage/storage.provider';
 import { ResumeEntity, ResumeStatus } from './entities/resume.entity';
 import { ResumeRepository } from './repositories/resume.repository';
+import { StructuredResumeRepository } from './repositories/structured-resume.repository';
+import type { StructuredResume } from './schemas/structured-resume.schema';
 
 export const MAX_RESUME_SIZE_BYTES = 10 * 1024 * 1024;
 
@@ -37,8 +41,9 @@ export class ResumesService {
 
   constructor(
     private readonly resumeRepository: ResumeRepository,
-    private readonly storageProvider: StorageProvider,
+    @Inject(STORAGE_PROVIDER) private readonly storageProvider: StorageProvider,
     private readonly messagingService: MessagingService,
+    private readonly structuredResumeRepository: StructuredResumeRepository,
   ) {}
 
   async upload(input: UploadInput): Promise<ResumeEntity> {
@@ -100,15 +105,60 @@ export class ResumesService {
   }
 
   async getOwned(userId: string, resumeId: string): Promise<ResumeEntity> {
-    const resume = await this.resumeRepository.findById(resumeId);
-    if (!resume || resume.userId !== userId) {
-      throw new NotFoundException('Resume not found');
-    }
+    const resume = await this.getOwnedEntity(userId, resumeId);
     return this.sanitizeResume(resume);
   }
 
   private sanitizeResume(resume: ResumeEntity): ResumeEntity {
     const { storageKey: _storageKey, ...safe } = resume;
     return safe as ResumeEntity;
+  }
+
+  async getParsedData(
+    userId: string,
+    resumeId: string,
+  ): Promise<StructuredResume> {
+    await this.getOwnedEntity(userId, resumeId);
+    return this.structuredResumeRepository.findByResumeId(resumeId);
+  }
+
+  async updateParsedData(
+    userId: string,
+    resumeId: string,
+    data: StructuredResume,
+  ): Promise<StructuredResume> {
+    const resume = await this.getOwnedEntity(userId, resumeId);
+    if (resume.status !== ResumeStatus.PROCESSED) {
+      throw new BadRequestException(
+        `Resume is ${resume.status}; parsed data can only be edited while processed`,
+      );
+    }
+
+    await this.structuredResumeRepository.replaceAllForResume(resumeId, data);
+    return this.structuredResumeRepository.findByResumeId(resumeId);
+  }
+
+  async approve(userId: string, resumeId: string): Promise<ResumeEntity> {
+    const resume = await this.getOwnedEntity(userId, resumeId);
+    if (resume.status !== ResumeStatus.PROCESSED) {
+      throw new BadRequestException(
+        `Only processed resumes can be approved (current: ${resume.status})`,
+      );
+    }
+    resume.approvedAt = new Date();
+    await this.resumeRepository.save(resume);
+    return this.sanitizeResume(resume);
+  }
+
+  /** Raw entity incl. storageKey — internal use only. */
+  private async getOwnedEntity(
+    userId: string,
+    resumeId: string,
+  ): Promise<ResumeEntity> {
+    const resume = await this.resumeRepository.findById(resumeId);
+    if (!resume || resume.userId !== userId) {
+      throw new NotFoundException('Resume not found');
+    }
+    return resume;
   }
 }

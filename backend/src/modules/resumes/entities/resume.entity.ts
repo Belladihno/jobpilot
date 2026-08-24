@@ -39,4 +39,7 @@ export class ResumeEntity extends BaseEntity {
 
   @Column({ name: 'processing_error', type: 'text', nullable: true })
   processingError!: string | null;
+
+  @Column({ name: 'approved_at', type: 'timestamptz', nullable: true })
+  approvedAt!: Date | null;
 }

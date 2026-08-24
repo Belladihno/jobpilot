@@ -7,9 +7,10 @@ import {
 import type { Channel, ChannelModel, ConsumeMessage } from 'amqplib';
 import { RABBITMQ_CONNECTION } from '../../infrastructure/messaging/messaging.constants';
 import { QUEUE_RESUME_PROCESSING } from '../../infrastructure/messaging/topology';
-import { StorageProvider } from '../../infrastructure/storage/storage.provider';
 import { AI_COMPLETION_CLIENT } from '../../infrastructure/ai/ai-client.interface';
 import type { AiCompletionClient } from '../../infrastructure/ai/ai-client.interface';
+import { STORAGE_PROVIDER } from '../../infrastructure/storage/storage.provider';
+import type { StorageProvider } from '../../infrastructure/storage/storage.provider';
 import { ResumeRepository } from '../../modules/resumes/repositories/resume.repository';
 import { StructuredResumeRepository } from '../../modules/resumes/repositories/structured-resume.repository';
 import {
@@ -30,7 +31,7 @@ export class ResumeProcessingConsumer implements OnApplicationBootstrap {
     @Inject(RABBITMQ_CONNECTION) private readonly connection: ChannelModel,
     private readonly resumeRepository: ResumeRepository,
     private readonly parserRegistry: ResumeParserRegistry,
-    private readonly storageProvider: StorageProvider,
+    @Inject(STORAGE_PROVIDER) private readonly storageProvider: StorageProvider,
     @Inject(AI_COMPLETION_CLIENT)
     private readonly aiClient: AiCompletionClient,
     private readonly structuredResumeRepository: StructuredResumeRepository,

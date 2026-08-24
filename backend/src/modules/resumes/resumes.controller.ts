@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   UploadedFile,
   UseInterceptors,
@@ -9,13 +10,19 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Express } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { ZodBody } from '../../common/decorators/zod-body.decorator';
 import type { UserEntity } from '../users/entities/user.entity';
 import { ResumesService } from './resumes.service';
 import {
+  ApiGetParsedDataDocs,
   ApiGetResumeDocs,
+  ApiApproveResumeDocs,
   ApiListResumesDocs,
+  ApiUpdateParsedDataDocs,
   ApiUploadResumeDocs,
 } from './docs/resumes.swagger';
+import { StructuredResumeSchema } from './schemas/structured-resume.schema';
+import type { StructuredResume } from './schemas/structured-resume.schema';
 
 const MISSING_FILE = {
   userId: '',
@@ -57,5 +64,27 @@ export class ResumesController {
   @Get(':id')
   async getOne(@CurrentUser() user: UserEntity, @Param('id') id: string) {
     return this.resumesService.getOwned(user.id, id);
+  }
+
+  @ApiGetParsedDataDocs()
+  @Get(':id/parsed-data')
+  getParsedData(@CurrentUser() user: UserEntity, @Param('id') id: string) {
+    return this.resumesService.getParsedData(user.id, id);
+  }
+
+  @ApiUpdateParsedDataDocs()
+  @Patch(':id/parsed-data')
+  updateParsedData(
+    @CurrentUser() user: UserEntity,
+    @Param('id') id: string,
+    @ZodBody(StructuredResumeSchema) dto: StructuredResume,
+  ) {
+    return this.resumesService.updateParsedData(user.id, id, dto);
+  }
+
+  @ApiApproveResumeDocs()
+  @Post(':id/approve')
+  approve(@CurrentUser() user: UserEntity, @Param('id') id: string) {
+    return this.resumesService.approve(user.id, id);
   }
 }
