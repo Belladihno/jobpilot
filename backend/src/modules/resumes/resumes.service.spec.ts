@@ -1,9 +1,10 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { ResumesService, MAX_RESUME_SIZE_BYTES } from './resumes.service';
 import { ResumeRepository } from './repositories/resume.repository';
+import { StructuredResumeRepository } from './repositories/structured-resume.repository';
 import type { StorageProvider } from '../../infrastructure/storage/storage.provider';
 import { MessagingService } from '../../infrastructure/messaging/messaging.service';
-import type { ResumeEntity } from './entities/resume.entity';
+import { ResumeEntity, ResumeStatus } from './entities/resume.entity';
 
 const PDF_MIME = 'application/pdf';
 
@@ -26,7 +27,13 @@ describe('ResumesService.upload', () => {
   };
 
   beforeEach(() => {
-    resumeRepo = { create: jest.fn().mockResolvedValue(savedResume) };
+    resumeRepo = {
+      create: jest.fn().mockResolvedValue(savedResume),
+      findById: jest.fn(),
+      save: jest
+        .fn()
+        .mockImplementation((r: ResumeEntity) => Promise.resolve(r)),
+    };
     storage = {
       put: jest.fn().mockResolvedValue(undefined),
       delete: jest.fn(),
@@ -36,6 +43,10 @@ describe('ResumesService.upload', () => {
       resumeRepo as unknown as ResumeRepository,
       storage as unknown as StorageProvider,
       messaging as unknown as MessagingService,
+      {
+        replaceAllForResume: jest.fn().mockResolvedValue(undefined),
+        findByResumeId: jest.fn(),
+      } as unknown as StructuredResumeRepository,
     );
   });
 
@@ -90,5 +101,124 @@ describe('ResumesService.upload', () => {
     });
     const result = await service.upload(input);
     expect(result.id).toBe('r-1');
+  });
+});
+
+describe('ResumesService review loop', () => {
+  let resumeRepo: { findById: jest.Mock; save: jest.Mock };
+  let structuredRepo: {
+    replaceAllForResume: jest.Mock;
+    findByResumeId: jest.Mock;
+  };
+  let service: ResumesService;
+
+  const processedResume = () =>
+    ({
+      id: 'r-1',
+      userId: 'u-1',
+      status: ResumeStatus.PROCESSED,
+      storageKey: 'resumes/u-1/cv.pdf',
+      approvedAt: null,
+    }) as unknown as ResumeEntity;
+
+  const parsedData = {
+    skills: [{ name: 'Node.js' }],
+    experience: [],
+    education: [],
+    certifications: [],
+    projects: [],
+  };
+
+  beforeEach(() => {
+    resumeRepo = {
+      findById: jest.fn().mockResolvedValue(processedResume()),
+      save: jest
+        .fn()
+        .mockImplementation((r: ResumeEntity) => Promise.resolve(r)),
+    };
+    structuredRepo = {
+      replaceAllForResume: jest.fn().mockResolvedValue(undefined),
+      findByResumeId: jest.fn().mockResolvedValue(parsedData),
+    };
+    service = new ResumesService(
+      resumeRepo as unknown as ResumeRepository,
+      { put: jest.fn(), delete: jest.fn() } as unknown as StorageProvider,
+      { publish: jest.fn() } as unknown as MessagingService,
+      structuredRepo as unknown as StructuredResumeRepository,
+    );
+  });
+
+  describe('getParsedData', () => {
+    it('returns assembled structured data for the owner', async () => {
+      const result = await service.getParsedData('u-1', 'r-1');
+
+      expect(structuredRepo.findByResumeId).toHaveBeenCalledWith('r-1');
+      expect(result).toBe(parsedData);
+    });
+
+    it('throws NotFound when resume is missing or foreign', async () => {
+      resumeRepo.findById.mockResolvedValue(null);
+
+      await expect(service.getParsedData('u-1', 'missing')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(structuredRepo.findByResumeId).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFound when another user asks for the resume', async () => {
+      await expect(service.getParsedData('u-2', 'r-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+  });
+
+  describe('updateParsedData', () => {
+    it('replaces and returns the corrected data while processed', async () => {
+      const result = await service.updateParsedData('u-1', 'r-1', parsedData);
+
+      expect(structuredRepo.replaceAllForResume).toHaveBeenCalledWith(
+        'r-1',
+        parsedData,
+      );
+      expect(result).toBe(parsedData);
+    });
+
+    it('rejects with BadRequest when resume is not processed', async () => {
+      const uploaded = processedResume();
+      uploaded.status = ResumeStatus.UPLOADED;
+      resumeRepo.findById.mockResolvedValue(uploaded);
+
+      await expect(
+        service.updateParsedData('u-1', 'r-1', parsedData),
+      ).rejects.toThrow(BadRequestException);
+      expect(structuredRepo.replaceAllForResume).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('approve', () => {
+    it('sets approvedAt on a processed resume and hides storageKey', async () => {
+      const result = await service.approve('u-1', 'r-1');
+
+      expect(result.approvedAt).toBeInstanceOf(Date);
+      expect(result.storageKey).toBeUndefined();
+      expect(resumeRepo.save).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects approval of a failed resume', async () => {
+      const failed = processedResume();
+      failed.status = ResumeStatus.FAILED;
+      resumeRepo.findById.mockResolvedValue(failed);
+
+      await expect(service.approve('u-1', 'r-1')).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(resumeRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFound for a foreign resume', async () => {
+      await expect(service.approve('u-2', 'r-1')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
   });
 });
