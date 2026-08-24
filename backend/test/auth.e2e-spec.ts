@@ -30,6 +30,11 @@ describe('Auth (e2e)', () => {
       publish: jest.fn().mockReturnValue(true),
       close: jest.fn().mockResolvedValue(undefined),
       on: jest.fn(),
+      prefetch: jest.fn().mockResolvedValue(undefined),
+      consume: jest.fn().mockResolvedValue({ consumerTag: 'mock' }),
+      assertExchange: jest.fn().mockResolvedValue(undefined),
+      assertQueue: jest.fn().mockResolvedValue({ queue: '' }),
+      bindQueue: jest.fn().mockResolvedValue(undefined),
     }),
     close: jest.fn().mockResolvedValue(undefined),
     on: jest.fn(),
@@ -88,6 +93,11 @@ describe('Auth (e2e)', () => {
     expect(res.body.email).toBe('e2e@example.com');
     expect(res.body.passwordHash).toBeUndefined();
     expect(res.headers['set-cookie']).toBeDefined();
+
+    const profiles = await dataSource.query(
+      'SELECT count(*)::int AS c FROM candidate_profiles',
+    );
+    expect(profiles[0].c).toBe(1);
   });
 
   it('POST /api/auth/register duplicate 409', async () => {

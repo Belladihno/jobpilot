@@ -1,7 +1,10 @@
 packages:
   - 'backend'
 
+publicHoistPattern:
+  - '*'
+
 allowBuilds:
-  '@scarf/scarf': set this to true or false
+  '@scarf/scarf': true
   argon2: true
   unrs-resolver: true

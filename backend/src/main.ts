@@ -20,6 +20,14 @@ async function bootstrap() {
   const appUrl = config.get('app.url', { infer: true });
   const port = config.get('app.port', { infer: true });
   const env = config.get('app.env', { infer: true });
+  const workerStandalone = config.get('worker.standalone', { infer: true });
+
+  if (workerStandalone) {
+    // Consumer-only mode: no HTTP listener, the queue is the interface.
+    await app.init();
+    new Logger('Bootstrap').log('Worker standalone mode — HTTP disabled');
+    return;
+  }
 
   app.enableCors({
     origin: appUrl,

@@ -12,6 +12,10 @@ export const envValidationSchema = Joi.object({
   // PostgreSQL
   DATABASE_URL: Joi.string().required(),
 
+  // Storage
+  STORAGE_DRIVER: Joi.string().valid('local').default('local'),
+  STORAGE_LOCAL_ROOT: Joi.string().default('./storage'),
+
   // Redis
   REDIS_HOST: Joi.string().required(),
   REDIS_PORT: Joi.number().default(6379),
@@ -30,4 +34,7 @@ export const envValidationSchema = Joi.object({
   COOKIE_SECURE: Joi.boolean().default(false),
   COOKIE_HTTP_ONLY: Joi.boolean().default(true),
   COOKIE_SAME_SITE: Joi.string().valid('lax', 'strict', 'none').default('lax'),
+
+  // Worker
+  WORKER_STANDALONE: Joi.boolean().default(false),
 });

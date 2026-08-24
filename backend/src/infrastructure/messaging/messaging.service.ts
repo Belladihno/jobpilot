@@ -7,6 +7,11 @@ import {
 } from '@nestjs/common';
 import type { Channel, ChannelModel } from 'amqplib';
 import { RABBITMQ_CONNECTION } from './messaging.constants';
+import {
+  EXCHANGE_JOBPILOT_EVENTS,
+  QUEUE_RESUME_PROCESSING,
+  ROUTING_KEY_RESUME_PROCESSING_REQUESTED,
+} from './topology';
 
 @Injectable()
 export class MessagingService implements OnModuleInit, OnModuleDestroy {
@@ -19,7 +24,21 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
 
   async onModuleInit(): Promise<void> {
     this.channel = await this.connection.createChannel();
+    await this.ensureTopology();
     this.logger.log('RabbitMQ channel created');
+  }
+
+  private async ensureTopology(): Promise<void> {
+    if (!this.channel) return;
+    await this.channel.assertExchange(EXCHANGE_JOBPILOT_EVENTS, 'direct', {
+      durable: true,
+    });
+    await this.channel.assertQueue(QUEUE_RESUME_PROCESSING, { durable: true });
+    await this.channel.bindQueue(
+      QUEUE_RESUME_PROCESSING,
+      EXCHANGE_JOBPILOT_EVENTS,
+      ROUTING_KEY_RESUME_PROCESSING_REQUESTED,
+    );
   }
 
   publish(exchange: string, routingKey: string, payload: unknown): boolean {

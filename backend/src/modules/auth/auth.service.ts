@@ -5,10 +5,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
-import { QueryFailedError } from 'typeorm';
+import { DataSource, QueryFailedError } from 'typeorm';
 import { AppConfig } from '../../config/configuration';
 import { UsersService } from '../users/users.service';
-import { UserStatus } from '../users/entities/user.entity';
+import { UserEntity, UserStatus } from '../users/entities/user.entity';
+import { CandidateProfileEntity } from '../candidate/entities/candidate-profile.entity';
 import { SessionRepository } from './repositories/session.repository';
 import { PasswordService } from './password.service';
 import { RegisterDto } from './schemas/register.schema';
@@ -26,6 +27,7 @@ export class AuthService {
     private readonly sessionRepository: SessionRepository,
     private readonly passwordService: PasswordService,
     private readonly config: ConfigService<AppConfig, true>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async register(dto: RegisterDto, meta: { ip: string; userAgent: string }) {
@@ -38,7 +40,7 @@ export class AuthService {
 
     let user;
     try {
-      user = await this.usersService.create({
+      user = await this.createUserWithProfile({
         email: dto.email,
         passwordHash,
         firstName: dto.firstName,
@@ -107,6 +109,22 @@ export class AuthService {
     }
 
     return session;
+  }
+
+  private createUserWithProfile(
+    data: Pick<UserEntity, 'email' | 'passwordHash' | 'firstName' | 'lastName'>,
+  ): Promise<UserEntity> {
+    return this.dataSource.transaction(async (manager) => {
+      const userRepository = manager.getRepository(UserEntity);
+      const profileRepository = manager.getRepository(CandidateProfileEntity);
+
+      const user = await userRepository.save(userRepository.create(data));
+      await profileRepository.save(
+        profileRepository.create({ userId: user.id }),
+      );
+
+      return user;
+    });
   }
 
   private isUniqueViolation(err: unknown): boolean {

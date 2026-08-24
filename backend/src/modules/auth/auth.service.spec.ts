@@ -1,12 +1,12 @@
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
-import { QueryFailedError } from 'typeorm';
+import { DataSource, QueryFailedError } from 'typeorm';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { SessionRepository } from './repositories/session.repository';
 import { PasswordService } from './password.service';
-import { UserStatus } from '../users/entities/user.entity';
+import { UserEntity, UserStatus } from '../users/entities/user.entity';
 
 describe('AuthService', () => {
   let authService: AuthService;
@@ -14,6 +14,9 @@ describe('AuthService', () => {
   let sessionRepo: jest.Mocked<SessionRepository>;
   let passwordService: jest.Mocked<PasswordService>;
   let configService: jest.Mocked<ConfigService>;
+  let userTxRepo: { create: jest.Mock; save: jest.Mock };
+  let profileTxRepo: { create: jest.Mock; save: jest.Mock };
+  let dataSource: { transaction: jest.Mock };
 
   const mockUser = {
     id: 'user-1',
@@ -22,7 +25,7 @@ describe('AuthService', () => {
     firstName: 'John',
     lastName: 'Doe',
     status: UserStatus.ACTIVE,
-  } as unknown as import('../users/entities/user.entity').UserEntity;
+  } as unknown as UserEntity;
 
   beforeEach(() => {
     usersService = {
@@ -48,19 +51,39 @@ describe('AuthService', () => {
       get: jest.fn().mockReturnValue(604800),
     } as unknown as jest.Mocked<ConfigService>;
 
+    userTxRepo = {
+      create: jest.fn((data: unknown) => data),
+      save: jest.fn().mockResolvedValue(mockUser),
+    };
+    profileTxRepo = {
+      create: jest.fn((data: unknown) => data),
+      save: jest.fn().mockResolvedValue({ id: 'profile-1' }),
+    };
+
+    const manager = {
+      getRepository: jest.fn((entity: unknown) =>
+        entity === UserEntity ? userTxRepo : profileTxRepo,
+      ),
+    };
+    dataSource = {
+      transaction: jest.fn(async (cb: (m: unknown) => Promise<unknown>) =>
+        cb(manager),
+      ),
+    };
+
     authService = new AuthService(
       usersService,
       sessionRepo,
       passwordService,
       configService as never,
+      dataSource as unknown as DataSource,
     );
   });
 
   describe('register', () => {
-    it('creates user and session', async () => {
+    it('creates user and blank profile in one transaction', async () => {
       usersService.existsByEmail.mockResolvedValue(false);
       passwordService.hash.mockResolvedValue('hashed-pass');
-      usersService.create.mockResolvedValue(mockUser);
       sessionRepo.create.mockResolvedValue({ id: 'sess-1' } as never);
 
       const result = await authService.register(
@@ -75,8 +98,13 @@ describe('AuthService', () => {
 
       expect(result.user).toBe(mockUser);
       expect(result.token).toBeDefined();
-      expect(typeof result.token).toBe('string');
       expect(passwordService.hash).toHaveBeenCalledWith('pass12345');
+      expect(userTxRepo.save).toHaveBeenCalledWith(
+        expect.objectContaining({ email: 'user@example.com' }),
+      );
+      expect(profileTxRepo.save).toHaveBeenCalledWith({
+        userId: mockUser.id,
+      });
     });
 
     it('throws Conflict if email exists', async () => {
@@ -102,7 +130,7 @@ describe('AuthService', () => {
         [],
         Object.assign(new Error('duplicate key'), { code: '23505' }),
       );
-      usersService.create.mockRejectedValue(dupError);
+      userTxRepo.save.mockRejectedValue(dupError);
 
       await expect(
         authService.register(

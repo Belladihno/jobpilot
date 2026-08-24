@@ -20,16 +20,22 @@ export class ZodEnforcementInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest<Request>();
 
     if (BODY_METHODS.has(request.method)) {
-      const validated = this.reflector.getAllAndOverride<boolean>(
-        ZOD_VALIDATED_BODY,
-        [context.getHandler(), context.getClass()],
+      const isMultipart = (request.headers['content-type'] ?? '').startsWith(
+        'multipart/form-data',
       );
 
-      const body = request.body as Record<string, unknown> | undefined;
-      if (!validated && body && Object.keys(body).length > 0) {
-        throw new InternalServerErrorException(
-          `Route ${request.method} ${String(request.url)} accepts a body but has no Zod schema validation`,
+      if (!isMultipart) {
+        const validated = this.reflector.getAllAndOverride<boolean>(
+          ZOD_VALIDATED_BODY,
+          [context.getHandler(), context.getClass()],
         );
+
+        const body = request.body as Record<string, unknown> | undefined;
+        if (!validated && body && Object.keys(body).length > 0) {
+          throw new InternalServerErrorException(
+            `Route ${request.method} ${String(request.url)} accepts a body but has no Zod schema validation`,
+          );
+        }
       }
     }
 

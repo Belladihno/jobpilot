@@ -8,6 +8,10 @@ export const configuration = () => ({
   database: {
     url: process.env.DATABASE_URL!,
   },
+  storage: {
+    driver: process.env.STORAGE_DRIVER ?? 'local',
+    localRoot: process.env.STORAGE_LOCAL_ROOT ?? './storage',
+  },
   redis: {
     host: process.env.REDIS_HOST!,
     port: parseInt(process.env.REDIS_PORT!, 10),
@@ -28,6 +32,9 @@ export const configuration = () => ({
       httpOnly: process.env.COOKIE_HTTP_ONLY !== 'false',
       sameSite: process.env.COOKIE_SAME_SITE as 'lax' | 'strict' | 'none',
     },
+  },
+  worker: {
+    standalone: process.env.WORKER_STANDALONE === 'true',
   },
 });
 
