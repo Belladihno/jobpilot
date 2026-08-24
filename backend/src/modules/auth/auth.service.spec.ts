@@ -7,6 +7,7 @@ import { UsersService } from '../users/users.service';
 import { SessionRepository } from './repositories/session.repository';
 import { PasswordService } from './password.service';
 import { UserEntity, UserStatus } from '../users/entities/user.entity';
+import { JobPreferencesEntity } from '../job-preferences/entities/job-preferences.entity';
 
 describe('AuthService', () => {
   let authService: AuthService;
@@ -16,6 +17,7 @@ describe('AuthService', () => {
   let configService: jest.Mocked<ConfigService>;
   let userTxRepo: { create: jest.Mock; save: jest.Mock };
   let profileTxRepo: { create: jest.Mock; save: jest.Mock };
+  let preferencesTxRepo: { create: jest.Mock; save: jest.Mock };
   let dataSource: { transaction: jest.Mock };
 
   const mockUser = {
@@ -58,11 +60,17 @@ describe('AuthService', () => {
       create: jest.fn((data: unknown) => data),
       save: jest.fn().mockResolvedValue({ id: 'profile-1' }),
     };
+    preferencesTxRepo = {
+      create: jest.fn((data: unknown) => data),
+      save: jest.fn().mockResolvedValue({ id: 'preferences-1' }),
+    };
 
     const manager = {
-      getRepository: jest.fn((entity: unknown) =>
-        entity === UserEntity ? userTxRepo : profileTxRepo,
-      ),
+      getRepository: jest.fn((entity: unknown) => {
+        if (entity === UserEntity) return userTxRepo;
+        if (entity === JobPreferencesEntity) return preferencesTxRepo;
+        return profileTxRepo;
+      }),
     };
     dataSource = {
       transaction: jest.fn(async (cb: (m: unknown) => Promise<unknown>) =>
@@ -80,7 +88,7 @@ describe('AuthService', () => {
   });
 
   describe('register', () => {
-    it('creates user and blank profile in one transaction', async () => {
+    it('creates user, blank profile and blank preferences in one transaction', async () => {
       usersService.existsByEmail.mockResolvedValue(false);
       passwordService.hash.mockResolvedValue('hashed-pass');
       sessionRepo.create.mockResolvedValue({ id: 'sess-1' } as never);
@@ -102,6 +110,9 @@ describe('AuthService', () => {
         expect.objectContaining({ email: 'user@example.com' }),
       );
       expect(profileTxRepo.save).toHaveBeenCalledWith({
+        userId: mockUser.id,
+      });
+      expect(preferencesTxRepo.save).toHaveBeenCalledWith({
         userId: mockUser.id,
       });
     });

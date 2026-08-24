@@ -10,6 +10,7 @@ import { AppConfig } from '../../config/configuration';
 import { UsersService } from '../users/users.service';
 import { UserEntity, UserStatus } from '../users/entities/user.entity';
 import { CandidateProfileEntity } from '../candidate/entities/candidate-profile.entity';
+import { JobPreferencesEntity } from '../job-preferences/entities/job-preferences.entity';
 import { SessionRepository } from './repositories/session.repository';
 import { PasswordService } from './password.service';
 import { RegisterDto } from './schemas/register.schema';
@@ -117,10 +118,14 @@ export class AuthService {
     return this.dataSource.transaction(async (manager) => {
       const userRepository = manager.getRepository(UserEntity);
       const profileRepository = manager.getRepository(CandidateProfileEntity);
+      const preferencesRepository = manager.getRepository(JobPreferencesEntity);
 
       const user = await userRepository.save(userRepository.create(data));
       await profileRepository.save(
         profileRepository.create({ userId: user.id }),
+      );
+      await preferencesRepository.save(
+        preferencesRepository.create({ userId: user.id }),
       );
 
       return user;
