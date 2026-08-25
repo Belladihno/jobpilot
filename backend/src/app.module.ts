@@ -9,6 +9,7 @@ import { MessagingModule } from './infrastructure/messaging/messaging.module';
 import { HealthModule } from './modules/health/health.module';
 import { CandidateModule } from './modules/candidate/candidate.module';
 import { JobPreferencesModule } from './modules/job-preferences/job-preferences.module';
+import { JobsModule } from './modules/jobs/jobs.module';
 import { ResumesModule } from './modules/resumes/resumes.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -46,6 +47,7 @@ import { RedisThrottlerStorage } from './infrastructure/redis/throttler-redis.st
     HealthModule,
     CandidateModule,
     JobPreferencesModule,
+    JobsModule,
     ResumesModule,
     UsersModule,
     AuthModule,

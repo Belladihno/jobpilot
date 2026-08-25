@@ -1,0 +1,13 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { JobEntity } from './entities/job.entity';
+import { JobsRepository } from './repositories/jobs.repository';
+import { JobDiscoveryConsumer } from '../../workers/job-discovery/job-discovery.consumer';
+import { DiscoveryScheduler } from '../../workers/job-discovery/discovery.scheduler';
+
+@Module({
+  imports: [TypeOrmModule.forFeature([JobEntity])],
+  providers: [JobsRepository, JobDiscoveryConsumer, DiscoveryScheduler],
+  exports: [JobsRepository],
+})
+export class JobsModule {}

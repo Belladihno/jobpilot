@@ -9,7 +9,9 @@ import type { Channel, ChannelModel } from 'amqplib';
 import { RABBITMQ_CONNECTION } from './messaging.constants';
 import {
   EXCHANGE_JOBPILOT_EVENTS,
+  QUEUE_JOB_DISCOVERY,
   QUEUE_RESUME_PROCESSING,
+  ROUTING_KEY_JOB_DISCOVERY_REQUESTED,
   ROUTING_KEY_RESUME_PROCESSING_REQUESTED,
 } from './topology';
 
@@ -38,6 +40,12 @@ export class MessagingService implements OnModuleInit, OnModuleDestroy {
       QUEUE_RESUME_PROCESSING,
       EXCHANGE_JOBPILOT_EVENTS,
       ROUTING_KEY_RESUME_PROCESSING_REQUESTED,
+    );
+    await this.channel.assertQueue(QUEUE_JOB_DISCOVERY, { durable: true });
+    await this.channel.bindQueue(
+      QUEUE_JOB_DISCOVERY,
+      EXCHANGE_JOBPILOT_EVENTS,
+      ROUTING_KEY_JOB_DISCOVERY_REQUESTED,
     );
   }
 
