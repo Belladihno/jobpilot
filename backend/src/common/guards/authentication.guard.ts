@@ -1,13 +1,14 @@
 import {
   CanActivate,
   ExecutionContext,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ConfigService } from '@nestjs/config';
 import type { Request } from 'express';
 import type { AppConfig } from '../../config/configuration';
+import { APP_CONFIG } from '../../config/app-config.module';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { AuthService } from '../../modules/auth/auth.service';
 
@@ -16,7 +17,7 @@ export class AuthenticationGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly authService: AuthService,
-    private readonly config: ConfigService<AppConfig, true>,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -29,7 +30,7 @@ export class AuthenticationGuard implements CanActivate {
     }
 
     const request = context.switchToHttp().getRequest<Request>();
-    const cookieName = this.config.get('auth.cookie.name', { infer: true });
+    const cookieName = this.config.auth.cookie.name;
     const cookies = (
       request as unknown as { cookies?: Record<string, string | undefined> }
     ).cookies;

@@ -1,6 +1,5 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
@@ -8,6 +7,7 @@ import * as express from 'express';
 import { GlobalExceptionFilter } from './common/filters/http-exception.filter';
 import { setupSwagger } from './infrastructure/swagger/swagger.config';
 import type { AppConfig } from './config/configuration';
+import { APP_CONFIG } from './config/app-config.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -16,11 +16,11 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
-  const config = app.get(ConfigService<AppConfig, true>);
-  const appUrl = config.get('app.url', { infer: true });
-  const port = config.get('app.port', { infer: true });
-  const env = config.get('app.env', { infer: true });
-  const workerStandalone = config.get('worker.standalone', { infer: true });
+  const config = app.get<AppConfig>(APP_CONFIG);
+  const appUrl = config.app.url;
+  const port = config.app.port;
+  const env = config.app.env;
+  const workerStandalone = config.worker.standalone;
 
   if (workerStandalone) {
     // Consumer-only mode: no HTTP listener, the queue is the interface.

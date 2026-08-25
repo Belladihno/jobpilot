@@ -1,7 +1,7 @@
 import { Global, Logger, Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
-import { AppConfig } from '../../config/configuration';
+import type { AppConfig } from '../../config/configuration';
+import { APP_CONFIG } from '../../config/app-config.module';
 import { REDIS_CLIENT } from './redis.constants';
 import { RedisService } from './redis.service';
 
@@ -10,12 +10,12 @@ import { RedisService } from './redis.service';
   providers: [
     {
       provide: REDIS_CLIENT,
-      inject: [ConfigService],
-      useFactory: (config: ConfigService<AppConfig, true>) => {
+      inject: [APP_CONFIG],
+      useFactory: (config: AppConfig) => {
         const logger = new Logger('RedisModule');
-        const host = config.get('redis.host', { infer: true });
-        const port = config.get('redis.port', { infer: true });
-        const password = config.get('redis.password', { infer: true });
+        const host = config.redis.host;
+        const port = config.redis.port;
+        const password = config.redis.password;
 
         const client = new Redis({
           host,

@@ -1,7 +1,7 @@
 import { Global, Logger, Module } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import * as amqp from 'amqplib';
-import { AppConfig } from '../../config/configuration';
+import type { AppConfig } from '../../config/configuration';
+import { APP_CONFIG } from '../../config/app-config.module';
 import { RABBITMQ_CONNECTION } from './messaging.constants';
 import { MessagingService } from './messaging.service';
 
@@ -10,14 +10,14 @@ import { MessagingService } from './messaging.service';
   providers: [
     {
       provide: RABBITMQ_CONNECTION,
-      inject: [ConfigService],
-      useFactory: async (config: ConfigService<AppConfig, true>) => {
+      inject: [APP_CONFIG],
+      useFactory: async (config: AppConfig) => {
         const logger = new Logger('MessagingModule');
-        const host = config.get('rabbitmq.host', { infer: true });
-        const port = config.get('rabbitmq.port', { infer: true });
-        const username = config.get('rabbitmq.username', { infer: true });
-        const password = config.get('rabbitmq.password', { infer: true });
-        const vhost = config.get('rabbitmq.vhost', { infer: true });
+        const host = config.rabbitmq.host;
+        const port = config.rabbitmq.port;
+        const username = config.rabbitmq.username;
+        const password = config.rabbitmq.password;
+        const vhost = config.rabbitmq.vhost;
 
         const encodedUser = encodeURIComponent(username);
         const encodedPass = encodeURIComponent(password);

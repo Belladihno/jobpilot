@@ -2,6 +2,7 @@ import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { configuration } from './config/configuration';
 import { envValidationSchema } from './config/env.validation';
+import { AppConfigModule } from './config/app-config.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { RedisModule } from './infrastructure/redis/redis.module';
 import { MessagingModule } from './infrastructure/messaging/messaging.module';
@@ -18,6 +19,7 @@ import {
 } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { StorageModule } from './infrastructure/storage/storage.module';
+import { JobSourcesModule } from './infrastructure/job-sources/job-sources.module';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { AuthenticationGuard } from './common/guards/authentication.guard';
@@ -35,9 +37,11 @@ import { RedisThrottlerStorage } from './infrastructure/redis/throttler-redis.st
       },
     }),
     DatabaseModule,
+    AppConfigModule,
     RedisModule,
     MessagingModule,
     StorageModule,
+    JobSourcesModule,
     ScheduleModule.forRoot(),
     HealthModule,
     CandidateModule,

@@ -1,4 +1,3 @@
-import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import type { AppConfig } from '../../config/configuration';
 import { HealthController } from './health.controller';
@@ -13,11 +12,8 @@ describe('HealthController', () => {
 
   function makeController(env: string) {
     const healthService = { check: jest.fn().mockResolvedValue(fullResult) };
-    const config = { get: jest.fn().mockReturnValue(env) };
-    const controller = new HealthController(
-      healthService as never,
-      config as unknown as ConfigService<AppConfig, true>,
-    );
+    const config = { app: { env } } as unknown as AppConfig;
+    const controller = new HealthController(healthService as never, config);
     return controller;
   }
 

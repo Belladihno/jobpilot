@@ -42,6 +42,15 @@ export const configuration = () => ({
   worker: {
     standalone: process.env.WORKER_STANDALONE === 'true',
   },
+  jobSources: {
+    enabled: (process.env.JOB_SOURCES ?? 'stub')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean),
+  },
+  discovery: {
+    cron: process.env.DISCOVERY_CRON ?? '0 */6 * * *',
+  },
 });
 
 export type AppConfig = ReturnType<typeof configuration>;

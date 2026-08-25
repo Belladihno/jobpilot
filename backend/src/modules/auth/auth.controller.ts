@@ -3,13 +3,14 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   Post,
   Req,
   Res,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import { ConfigService } from '@nestjs/config';
 import type { AppConfig } from '../../config/configuration';
+import { APP_CONFIG } from '../../config/app-config.module';
 import { AuthService } from './auth.service';
 import { Public } from '../../common/decorators/public.decorator';
 import { ZodBody } from '../../common/decorators/zod-body.decorator';
@@ -35,7 +36,7 @@ import {
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private readonly config: ConfigService<AppConfig, true>,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
   ) {}
 
   @Public()
@@ -106,18 +107,17 @@ export class AuthController {
   }
 
   private setCookie(res: Response, token: string) {
-    const cookieConfig = this.config.get('auth.cookie', { infer: true });
+    const cookieConfig = this.config.auth.cookie;
     res.cookie(cookieConfig.name, token, {
       httpOnly: cookieConfig.httpOnly,
       secure: cookieConfig.secure,
       sameSite: cookieConfig.sameSite,
-      maxAge: this.config.get('auth.sessionTtlSeconds', { infer: true }) * 1000,
+      maxAge: this.config.auth.sessionTtlSeconds * 1000,
     });
   }
 
   private clearCookie(res: Response) {
-    const cookieName = this.config.get('auth.cookie.name', { infer: true });
-    res.clearCookie(cookieName);
+    res.clearCookie(this.config.auth.cookie.name);
   }
 
   private sanitizeUser(user: UserEntity) {

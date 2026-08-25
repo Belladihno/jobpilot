@@ -1,7 +1,7 @@
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { DataSource, QueryFailedError } from 'typeorm';
+import type { AppConfig } from '../../config/configuration';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { SessionRepository } from './repositories/session.repository';
@@ -14,7 +14,6 @@ describe('AuthService', () => {
   let usersService: jest.Mocked<UsersService>;
   let sessionRepo: jest.Mocked<SessionRepository>;
   let passwordService: jest.Mocked<PasswordService>;
-  let configService: jest.Mocked<ConfigService>;
   let userTxRepo: { create: jest.Mock; save: jest.Mock };
   let profileTxRepo: { create: jest.Mock; save: jest.Mock };
   let preferencesTxRepo: { create: jest.Mock; save: jest.Mock };
@@ -48,9 +47,9 @@ describe('AuthService', () => {
       verify: jest.fn(),
     } as unknown as jest.Mocked<PasswordService>;
 
-    configService = {
-      get: jest.fn().mockReturnValue(604800),
-    } as unknown as jest.Mocked<ConfigService>;
+    const appConfig = {
+      auth: { sessionTtlSeconds: 604800 },
+    } as unknown as AppConfig;
 
     userTxRepo = {
       create: jest.fn((data: unknown) => data),
@@ -82,7 +81,7 @@ describe('AuthService', () => {
       usersService,
       sessionRepo,
       passwordService,
-      configService as never,
+      appConfig,
       dataSource as unknown as DataSource,
     );
   });

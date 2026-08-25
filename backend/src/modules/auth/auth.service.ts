@@ -1,12 +1,13 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { DataSource, QueryFailedError } from 'typeorm';
-import { AppConfig } from '../../config/configuration';
+import type { AppConfig } from '../../config/configuration';
+import { APP_CONFIG } from '../../config/app-config.module';
 import { UsersService } from '../users/users.service';
 import { UserEntity, UserStatus } from '../users/entities/user.entity';
 import { CandidateProfileEntity } from '../candidate/entities/candidate-profile.entity';
@@ -27,7 +28,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly sessionRepository: SessionRepository,
     private readonly passwordService: PasswordService,
-    private readonly config: ConfigService<AppConfig, true>,
+    @Inject(APP_CONFIG) private readonly config: AppConfig,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -157,7 +158,7 @@ export class AuthService {
   ) {
     const token = crypto.randomBytes(32).toString('hex');
     const tokenHash = this.hashToken(token);
-    const ttl = this.config.get('auth.sessionTtlSeconds', { infer: true });
+    const ttl = this.config.auth.sessionTtlSeconds;
 
     const expiresAt = new Date();
     expiresAt.setSeconds(expiresAt.getSeconds() + ttl);

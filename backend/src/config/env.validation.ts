@@ -42,4 +42,8 @@ export const envValidationSchema = Joi.object({
 
   // Worker
   WORKER_STANDALONE: Joi.boolean().default(false),
+
+  // Job discovery
+  JOB_SOURCES: Joi.string().default('stub'),
+  DISCOVERY_CRON: Joi.string().default('0 */6 * * *'),
 });
