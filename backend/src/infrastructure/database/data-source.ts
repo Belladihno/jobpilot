@@ -5,6 +5,7 @@ import { UserEntity } from '../../modules/users/entities/user.entity';
 import { CandidateProfileEntity } from '../../modules/candidate/entities/candidate-profile.entity';
 import { JobPreferencesEntity } from '../../modules/job-preferences/entities/job-preferences.entity';
 import { JobEntity } from '../../modules/jobs/entities/job.entity';
+import { JobMatchEntity } from '../../modules/matching/entities/job-match.entity';
 import { ResumeEntity } from '../../modules/resumes/entities/resume.entity';
 import { ResumeSkillEntity } from '../../modules/resumes/entities/resume-skill.entity';
 import { ResumeExperienceEntity } from '../../modules/resumes/entities/resume-experience.entity';
@@ -22,6 +23,7 @@ import { AddResumesApprovedAt1787568000000 } from '../../../migrations/178756800
 import { AddDefaultResumeToCandidateProfiles1787654400000 } from '../../../migrations/1787654400000-AddDefaultResumeToCandidateProfiles';
 import { CreateJobPreferences1787740800000 } from '../../../migrations/1787740800000-CreateJobPreferences';
 import { CreateJobs1787827200000 } from '../../../migrations/1787827200000-CreateJobs';
+import { CreateJobMatches1787913600000 } from '../../../migrations/1787913600000-CreateJobMatches';
 
 dotenv.config();
 
@@ -34,6 +36,7 @@ export const AppDataSource = new DataSource({
     CandidateProfileEntity,
     JobPreferencesEntity,
     JobEntity,
+    JobMatchEntity,
     ResumeEntity,
     ResumeSkillEntity,
     ResumeExperienceEntity,
@@ -53,6 +56,7 @@ export const AppDataSource = new DataSource({
     AddDefaultResumeToCandidateProfiles1787654400000,
     CreateJobPreferences1787740800000,
     CreateJobs1787827200000,
+    CreateJobMatches1787913600000,
   ],
   synchronize: false,
   ssl: false,

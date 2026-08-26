@@ -130,6 +130,11 @@ export class JobsRepository {
     return this.repo.findOne({ where: { id } });
   }
 
+  async findByIds(ids: string[]): Promise<JobEntity[]> {
+    if (ids.length === 0) return [];
+    return this.repo.find({ where: ids.map((id) => ({ id })) });
+  }
+
   /**
    * Deduplicated ingestion keyed by (source, externalId).
    * Returns ids of rows created or content-changed — the set that needs a

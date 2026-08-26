@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 import { CandidateProfileEntity } from '../entities/candidate-profile.entity';
 
 @Injectable()
@@ -12,6 +12,13 @@ export class CandidateProfileRepository {
 
   async findByUserId(userId: string): Promise<CandidateProfileEntity | null> {
     return this.repo.findOne({ where: { userId } });
+  }
+
+  /** Users who designated an active/default resume — matching candidates. */
+  async findWithDefaultResume(): Promise<CandidateProfileEntity[]> {
+    return this.repo.find({
+      where: { defaultResumeId: Not(IsNull()) },
+    });
   }
 
   async createBlankForUser(userId: string): Promise<CandidateProfileEntity> {

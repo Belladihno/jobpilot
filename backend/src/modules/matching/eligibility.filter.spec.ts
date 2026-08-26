@@ -22,6 +22,8 @@ const prefs = (
   employmentTypes: [],
   excludedKeywords: [],
   requiredKeywords: [],
+  experienceLevels: [],
+  salaryMin: null,
   ...overrides,
 });
 

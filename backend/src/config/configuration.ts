@@ -54,3 +54,15 @@ export const configuration = () => ({
 });
 
 export type AppConfig = ReturnType<typeof configuration>;
+
+/**
+ * Matching score components (must sum to 100). Business tuning, deliberately
+ * NOT an environment variable — see phase3 plan §0.
+ */
+export const MATCHING_WEIGHTS = {
+  skills: 40,
+  title: 20,
+  experience: 20,
+  location: 10,
+  preferenceAlignment: 10,
+} as const;

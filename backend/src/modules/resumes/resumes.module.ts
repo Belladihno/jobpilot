@@ -40,6 +40,6 @@ import { StructuredResumeRepository } from './repositories/structured-resume.rep
     StructuredResumeRepository,
     ResumeProcessingConsumer,
   ],
-  exports: [ResumesService],
+  exports: [ResumesService, StructuredResumeRepository],
 })
 export class ResumesModule {}

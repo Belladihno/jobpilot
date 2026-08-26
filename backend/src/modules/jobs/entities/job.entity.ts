@@ -1,12 +1,16 @@
 import { Column, Entity, Index } from 'typeorm';
 import { BaseEntity } from '../../../common/entities/base.entity';
+import { REMOTE_TYPES } from '../../../infrastructure/job-sources/normalized-job.schema';
 import type {
   EmploymentType,
   ExperienceLevel,
-  RemotePreference,
 } from '../../job-preferences/entities/job-preferences.entity';
 
-export type JobRemoteType = RemotePreference | 'UNKNOWN';
+/**
+ * Job-side remote types only — 'ANY' exists on the preference side, never as
+ * a property of a posting.
+ */
+export type JobRemoteType = (typeof REMOTE_TYPES)[number];
 
 @Entity('jobs')
 @Index('UQ_jobs_source_external_id', ['source', 'externalId'], {

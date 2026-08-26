@@ -9,7 +9,7 @@ import { ResumeEntity, ResumeStatus } from './entities/resume.entity';
 const PDF_MIME = 'application/pdf';
 
 describe('ResumesService.upload', () => {
-  let resumeRepo: { create: jest.Mock };
+  let resumeRepo: { create: jest.Mock; findById: jest.Mock; save: jest.Mock };
   let storage: { put: jest.Mock; delete: jest.Mock };
   let messaging: { publish: jest.Mock };
   let service: ResumesService;

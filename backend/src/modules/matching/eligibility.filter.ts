@@ -1,5 +1,6 @@
 import type {
   EmploymentType,
+  ExperienceLevel,
   RemotePreference,
 } from '../job-preferences/entities/job-preferences.entity';
 
@@ -22,6 +23,9 @@ export interface EligibilityPreferences {
   employmentTypes: EmploymentType[];
   excludedKeywords: string[];
   requiredKeywords: string[];
+  experienceLevels: ExperienceLevel[];
+  /** Minimum acceptable salary (job max must reach it); null = unconstrained */
+  salaryMin: number | null;
 }
 
 const containsIgnoreCase = (haystack: string, needle: string): boolean =>

@@ -10,6 +10,7 @@ import { QUEUE_JOB_DISCOVERY } from '../../infrastructure/messaging/topology';
 import { JobSourceRegistry } from '../../infrastructure/job-sources/providers/registry';
 import { JobDiscoveryMessageSchema } from '../../modules/jobs/schemas/job-discovery-message.schema';
 import { JobsRepository } from '../../modules/jobs/repositories/jobs.repository';
+import { MatchingService } from '../../modules/matching/matching.service';
 
 @Injectable()
 export class JobDiscoveryConsumer implements OnApplicationBootstrap {
@@ -20,6 +21,7 @@ export class JobDiscoveryConsumer implements OnApplicationBootstrap {
     @Inject(RABBITMQ_CONNECTION) private readonly connection: ChannelModel,
     private readonly jobSourceRegistry: JobSourceRegistry,
     private readonly jobsRepository: JobsRepository,
+    private readonly matchingService: MatchingService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -58,11 +60,17 @@ export class JobDiscoveryConsumer implements OnApplicationBootstrap {
       const jobs = await adapter.fetchLatest();
       const result = await this.jobsRepository.upsertMany(jobs);
 
-      // TODO(Batch E): trigger matching pass over
-      // [...result.insertedIds, ...result.updatedIds]
+      // Inline matching pass over new/changed jobs only (plan §0).
+      let matchedCount = 0;
+      const affectedIds = [...result.insertedIds, ...result.updatedIds];
+      if (affectedIds.length > 0) {
+        const affectedJobs = await this.jobsRepository.findByIds(affectedIds);
+        matchedCount =
+          await this.matchingService.computeMatchesForJobs(affectedJobs);
+      }
 
       this.logger.log(
-        `Discovery from "${source}": fetched ${jobs.length}, inserted ${result.insertedIds.length}, updated ${result.updatedIds.length}, unchanged ${result.unchangedCount}`,
+        `Discovery from "${source}": fetched ${jobs.length}, inserted ${result.insertedIds.length}, updated ${result.updatedIds.length}, unchanged ${result.unchangedCount}, matches ${matchedCount}`,
       );
     } catch (err) {
       // Source failures are transient by nature; drop the message instead of

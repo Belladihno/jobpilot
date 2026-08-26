@@ -36,7 +36,8 @@ const makeJob = (externalId: string): NormalizedJob => ({
 describe('JobDiscoveryConsumer', () => {
   let channel: { ack: jest.Mock; prefetch: jest.Mock; consume: jest.Mock };
   let registry: { get: jest.Mock };
-  let jobsRepo: { upsertMany: jest.Mock };
+  let jobsRepo: { upsertMany: jest.Mock; findByIds: jest.Mock };
+  let matching: { computeMatchesForJobs: jest.Mock };
   let consumer: JobDiscoveryConsumer;
 
   beforeEach(async () => {
@@ -52,7 +53,9 @@ describe('JobDiscoveryConsumer', () => {
         updatedIds: [],
         unchangedCount: 0,
       }),
+      findByIds: jest.fn().mockResolvedValue([]),
     };
+    matching = { computeMatchesForJobs: jest.fn().mockResolvedValue(0) };
 
     const connection = {
       createChannel: jest.fn().mockResolvedValue(channel),
@@ -61,21 +64,45 @@ describe('JobDiscoveryConsumer', () => {
       connection as never,
       registry as never,
       jobsRepo as never,
+      matching as never,
     );
     await consumer.start();
   });
 
-  it('fetches, upserts and acks a valid discovery request', async () => {
+  it('fetches, upserts, matches and acks a valid discovery request', async () => {
+    const jobEntity = { id: 'j-1' };
     const adapter: JobSourceAdapter = {
       id: 'stub',
       fetchLatest: jest.fn().mockResolvedValue([makeJob('ext-1')]),
     };
     registry.get.mockReturnValue(adapter);
+    jobsRepo.findByIds.mockResolvedValue([jobEntity]);
 
     await consumer.handle(message({ source: 'stub' }));
 
     expect(adapter.fetchLatest).toHaveBeenCalledTimes(1);
     expect(jobsRepo.upsertMany).toHaveBeenCalledWith([makeJob('ext-1')]);
+    expect(jobsRepo.findByIds).toHaveBeenCalledWith(['j-1']);
+    expect(matching.computeMatchesForJobs).toHaveBeenCalledWith([jobEntity]);
+    expect(channel.ack).toHaveBeenCalledTimes(1);
+  });
+
+  it('skips the matching pass when nothing changed', async () => {
+    const adapter: JobSourceAdapter = {
+      id: 'stub',
+      fetchLatest: jest.fn().mockResolvedValue([makeJob('ext-1')]),
+    };
+    registry.get.mockReturnValue(adapter);
+    jobsRepo.upsertMany.mockResolvedValue({
+      insertedIds: [],
+      updatedIds: [],
+      unchangedCount: 1,
+    });
+
+    await consumer.handle(message({ source: 'stub' }));
+
+    expect(jobsRepo.findByIds).not.toHaveBeenCalled();
+    expect(matching.computeMatchesForJobs).not.toHaveBeenCalled();
     expect(channel.ack).toHaveBeenCalledTimes(1);
   });
 
