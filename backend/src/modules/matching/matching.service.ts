@@ -1,11 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CandidateProfileRepository } from '../candidate/repositories/candidate-profile.repository';
 import { JobPreferencesRepository } from '../job-preferences/repositories/job-preferences.repository';
 import type { JobEntity } from '../jobs/entities/job.entity';
+import { JobsRepository } from '../jobs/repositories/jobs.repository';
 import { StructuredResumeRepository } from '../resumes/repositories/structured-resume.repository';
 import { ResumesService } from '../resumes/resumes.service';
 import type { EligibilityPreferences } from './eligibility.filter';
 import { isEligible } from './eligibility.filter';
+import type { JobMatchEntity, MatchStatus } from './entities/job-match.entity';
 import type { ComputedMatchRow } from './repositories/job-match.repository';
 import { JobMatchRepository } from './repositories/job-match.repository';
 import { scoreJob } from './matching.scorer';
@@ -29,6 +31,7 @@ export class MatchingService {
     private readonly profileRepository: CandidateProfileRepository,
     private readonly structuredResumeRepository: StructuredResumeRepository,
     private readonly resumesService: ResumesService,
+    private readonly jobsRepository: JobsRepository,
   ) {}
 
   /**
@@ -98,5 +101,79 @@ export class MatchingService {
       });
     }
     return rows;
+  }
+
+  /** Own matches with the attached job summary, filtered and ranked. */
+  async getMatches(
+    userId: string,
+    filters: {
+      minScore?: number;
+      status?: MatchStatus;
+      source?: string;
+      limit: number;
+    },
+  ): Promise<Array<JobMatchEntity & { job: JobEntity }>> {
+    let matches = await this.jobMatchRepository.findByUserId(userId);
+
+    if (filters.minScore !== undefined) {
+      matches = matches.filter((match) => match.score >= filters.minScore!);
+    }
+    if (filters.status) {
+      matches = matches.filter((match) => match.status === filters.status);
+    }
+
+    const jobs = await this.jobsRepository.findByIds(
+      matches.map((match) => match.jobId),
+    );
+    const jobsById = new Map(jobs.map((job) => [job.id, job]));
+
+    return matches
+      .map((match) => {
+        const job = jobsById.get(match.jobId);
+        return job ? Object.assign(match, { job }) : null;
+      })
+      .filter(
+        (match): match is JobMatchEntity & { job: JobEntity } => match !== null,
+      )
+      .filter((match) => !filters.source || match.job.source === filters.source)
+      .slice(0, filters.limit);
+  }
+
+  async getMatch(
+    userId: string,
+    matchId: string,
+  ): Promise<JobMatchEntity & { job: JobEntity }> {
+    const match = await this.findOwnedWithJob(userId, matchId);
+    return match;
+  }
+
+  async updateMatchStatus(
+    userId: string,
+    matchId: string,
+    status: MatchStatus,
+  ): Promise<JobMatchEntity & { job: JobEntity }> {
+    const match = await this.findOwnedWithJob(userId, matchId);
+    match.status = status;
+    await this.jobMatchRepository.save(match);
+    return match;
+  }
+
+  private async findOwnedWithJob(
+    userId: string,
+    matchId: string,
+  ): Promise<JobMatchEntity & { job: JobEntity }> {
+    // Ownership is enforced by scoping the lookup to the caller's userId.
+    const match = await this.jobMatchRepository.findByIdAndUser(
+      matchId,
+      userId,
+    );
+    if (!match) {
+      throw new NotFoundException('Match not found');
+    }
+    const job = await this.jobsRepository.findById(match.jobId);
+    if (!job) {
+      throw new NotFoundException('Match not found');
+    }
+    return Object.assign(match, { job });
   }
 }

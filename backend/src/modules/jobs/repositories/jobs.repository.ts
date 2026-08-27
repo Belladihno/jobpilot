@@ -135,6 +135,41 @@ export class JobsRepository {
     return this.repo.find({ where: ids.map((id) => ({ id })) });
   }
 
+  /** Filtered, newest-first listing for the /jobs browse surface. */
+  async findWithFilters(filters: {
+    source?: string;
+    location?: string;
+    remoteType?: string;
+    postedAfter?: Date;
+    limit: number;
+  }): Promise<JobEntity[]> {
+    const qb = this.repo
+      .createQueryBuilder('job')
+      .orderBy('job.discoveredAt', 'DESC')
+      .take(filters.limit);
+
+    if (filters.source) {
+      qb.andWhere('job.source = :source', { source: filters.source });
+    }
+    if (filters.remoteType) {
+      qb.andWhere('job.remoteType = :remoteType', {
+        remoteType: filters.remoteType,
+      });
+    }
+    if (filters.location) {
+      // Strip LIKE wildcards from user input; parameterized so no SQL risk.
+      const safe = filters.location.replace(/[%_]/g, '');
+      qb.andWhere('job.location ILIKE :location', { location: `%${safe}%` });
+    }
+    if (filters.postedAfter) {
+      qb.andWhere('job.postedAt >= :postedAfter', {
+        postedAfter: filters.postedAfter,
+      });
+    }
+
+    return qb.getMany();
+  }
+
   /**
    * Deduplicated ingestion keyed by (source, externalId).
    * Returns ids of rows created or content-changed — the set that needs a
